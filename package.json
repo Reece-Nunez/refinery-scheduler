@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "node prisma/seed.cjs"
+    "seed": "node prisma/seed.cjs",
+    "create-admin": "node --env-file=.env.local scripts/create-admin.mjs",
+    "seed-jobs": "node --env-file=.env.local scripts/seed-jobs.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",

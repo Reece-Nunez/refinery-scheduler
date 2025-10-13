@@ -8,6 +8,7 @@ import { parseISO, format } from 'date-fns'
 import moment from 'moment'
 import Modal from 'react-modal'
 import axios from 'axios'
+import { supabase } from '@/lib/supabaseClient'
 
 type ShiftEvent = {
   id: string
@@ -19,12 +20,13 @@ type ShiftEvent = {
 }
 
 type Props = {
-  fetchShifts: () => void
+  fetchShifts?: () => void
+  canManage?: boolean
 }
 
 const localizer = momentLocalizer(moment)
 
-export default function ScheduleCalendar({ fetchShifts }: Props) {
+export default function ScheduleCalendar({ fetchShifts, canManage = true }: Props) {
   const [events, setEvents] = useState<ShiftEvent[]>([])
   const [defaultDate, setDefaultDate] = useState<Date>(new Date())
   const [view, setView] = useState<View>(Views.MONTH)
@@ -75,7 +77,11 @@ export default function ScheduleCalendar({ fetchShifts }: Props) {
       isOverridden: selectedEvent.isOverridden,
     }
 
-    await axios.put(`/api/shifts/${selectedEvent.id}`, payload)
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    await axios.put(`/api/shifts/${selectedEvent.id}`, payload, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
     setIsModalOpen(false)
     setSelectedEvent(null)
     fetchEvents()
@@ -86,7 +92,11 @@ export default function ScheduleCalendar({ fetchShifts }: Props) {
     const confirm = window.confirm('Are you sure you want to delete this shift?')
     if (!confirm) return
 
-    await axios.delete(`/api/shifts/${selectedEvent.id}`)
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    await axios.delete(`/api/shifts/${selectedEvent.id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
     setIsModalOpen(false)
     setSelectedEvent(null)
     fetchEvents()
@@ -115,7 +125,6 @@ export default function ScheduleCalendar({ fetchShifts }: Props) {
   return (
     <div className="mt-16 w-full">
       <div className="max-w-6xl mx-auto px-4">
-        <h2 className="text-2xl font-bold mb-4 text-white">Shift Calendar</h2>
         <div className="h-[700px] border border-white rounded-lg overflow-hidden shadow-lg">
           <Calendar
             localizer={localizer}
@@ -130,6 +139,7 @@ export default function ScheduleCalendar({ fetchShifts }: Props) {
             style={{ height: '100%', color: 'white' }}
             views={{ month: true, week: true, day: true, agenda: true }}
             onSelectEvent={(event: ShiftEvent) => {
+              if (!canManage) return
               setSelectedEvent(event)
               setIsModalOpen(true)
             }}
@@ -138,11 +148,11 @@ export default function ScheduleCalendar({ fetchShifts }: Props) {
       </div>
 
       {/* Modal for Edit/Delete */}
-      {selectedEvent && (
+      {canManage && selectedEvent && (
         <Modal
           isOpen={isModalOpen}
           onRequestClose={() => setIsModalOpen(false)}
-          className="bg-white max-w-md mx-auto mt-40 p-6 rounded-lg shadow-xl text-black"
+          className="bg-white max-w-md mx-auto mt-40 rounded-lg shadow-xl text-black"
           overlayClassName="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
         >
           <h2 className="text-xl font-bold mb-4">Edit Shift</h2>
@@ -164,7 +174,7 @@ export default function ScheduleCalendar({ fetchShifts }: Props) {
             <div className="flex justify-end gap-4 mt-6">
               <button
                 onClick={handleEditSubmit}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900"
               >
                 Save
               </button>

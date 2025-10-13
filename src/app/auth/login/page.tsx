@@ -22,7 +22,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center px-4">
       <motion.form
         onSubmit={handleLogin}
         initial={{ opacity: 0, scale: 0.9 }}
@@ -39,7 +39,7 @@ export default function LoginPage() {
             placeholder="your@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 rounded bg-white/20 border border-white/30 placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full px-4 py-2 rounded bg-white/20 border border-white/30 placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
 
@@ -50,7 +50,7 @@ export default function LoginPage() {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 rounded bg-white/20 border border-white/30 placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full px-4 py-2 rounded bg-white/20 border border-white/30 placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
 
@@ -60,11 +60,14 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          className="w-full py-2 bg-blue-600 hover:bg-blue-700 transition rounded font-semibold text-white shadow-md"
+          className="w-full py-2 bg-black hover:bg-gray-900 transition rounded font-semibold text-white shadow-md"
         >
           Sign In
         </button>
       </motion.form>
+      <div className="absolute bottom-8 text-sm text-white/80">
+        New operator? <a href="/auth/register" className="underline">Create an account</a>
+      </div>
     </div>
   )
 }

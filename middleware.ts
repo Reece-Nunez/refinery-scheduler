@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
-import { supabaseServiceRoleClient } from '@/lib/supabaseServiceClient'
+// import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+// import { supabaseServiceRoleClient } from '@/lib/supabaseServiceClient'
 
 export const config = {
   matcher: ['/dashboard/:path*', '/shifts/:path*', '/operators', '/admin'],
@@ -9,6 +9,11 @@ export const config = {
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
+  
+  // TODO: Temporarily disabled authentication - database was deleted
+  // Uncomment and reconfigure when new Supabase project is set up
+  
+  /*
   const supabase = createMiddlewareClient({ req, res })
 
   const {
@@ -41,6 +46,7 @@ export async function middleware(req: NextRequest) {
       }
     }
   }
+  */
 
   return res
 }

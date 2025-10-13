@@ -132,7 +132,7 @@ export default function OperatorForm() {
               value={form.name}
               onChange={handleChange}
               placeholder="Name"
-              className="bg-white/10 border border-white/20 text-white placeholder:text-gray-300 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="bg-white/10 border border-white/20 text-white placeholder:text-gray-300 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             />
             <input
               name="employeeId"
@@ -155,7 +155,7 @@ export default function OperatorForm() {
               name="team"
               value={form.team}
               onChange={handleChange}
-              className="bg-white/10 border border-white/20 text-blue-500 px-4 py-2 rounded"
+              className="bg-white/10 border border-white/20 text-red-500 px-4 py-2 rounded"
             >
               {teamOptions.map((team) => (
                 <option key={team} value={team}>
@@ -174,7 +174,7 @@ export default function OperatorForm() {
                     type="checkbox"
                     checked={form.trainedJobIds.includes(job.id)}
                     onChange={() => toggleJob(job.id)}
-                    className="accent-blue-500"
+                    className="accent-red-600"
                   />
                   <span>{job.title}</span>
                 </label>
@@ -185,7 +185,7 @@ export default function OperatorForm() {
           <div className="flex gap-4 items-center">
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 transition px-6 py-2 rounded text-white font-semibold shadow cursor-pointer"
+              className="bg-black hover:bg-gray-900 transition px-6 py-2 rounded text-white font-semibold shadow cursor-pointer"
             >
               {editing ? 'Update' : 'Create'}
             </button>
@@ -193,7 +193,7 @@ export default function OperatorForm() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="bg-blue-600 hover:bg-blue-700 transition px-6 py-2 rounded text-white font-semibold shadow cursor-pointer"
+                className="bg-black hover:bg-gray-900 transition px-6 py-2 rounded text-white font-semibold shadow cursor-pointer"
               >
                 Cancel
               </button>
@@ -235,7 +235,7 @@ export default function OperatorForm() {
                           op.trainedJobs.map((j) => (
                             <span
                               key={j.id}
-                              className="bg-blue-600/80 text-white px-2 py-0.5 rounded-full text-[11px] font-medium shadow-sm"
+                            className="bg-red-600/80 text-white px-2 py-0.5 rounded-full text-[11px] font-medium shadow-sm"
                             >
                               {j.title}
                             </span>
@@ -249,7 +249,7 @@ export default function OperatorForm() {
                     <td className="p-2 space-x-3">
                       <button
                         onClick={() => handleEdit(op)}
-                        className="text-blue-400 bg-white px-4 py-1 rounded hover:bg-blue-500 hover:text-white cursor-pointer"
+                        className="text-gray-900 bg-white px-4 py-1 rounded hover:bg-gray-200 cursor-pointer"
                       >
                         Edit
                       </button>
