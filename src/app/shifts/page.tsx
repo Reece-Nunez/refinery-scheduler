@@ -209,6 +209,15 @@ export default function ShiftsPage() {
     setShowShiftDetailsModal(true)
   }
 
+  const handleDeleteShifts = async (shiftIds: string[]) => {
+    // Delete shifts one by one
+    for (const id of shiftIds) {
+      await axios.delete(`/api/shifts?id=${id}`)
+    }
+    // Refresh shifts after deletion
+    await fetchShifts()
+  }
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement | HTMLSelectElement
@@ -702,6 +711,7 @@ export default function ShiftsPage() {
               onVacationClick={handleVacationClick}
               onMandateClick={handleMandateClick}
               onShiftDetails={handleShiftDetails}
+              onDeleteShifts={role === 'ADMIN' ? handleDeleteShifts : undefined}
             />
           ) : (
             <OutOfScheduleView operators={operators} onAssignmentChange={() => {

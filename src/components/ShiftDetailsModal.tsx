@@ -8,7 +8,8 @@ import { createBrowserClient } from '@supabase/ssr'
 interface Operator {
   id: string
   name: string
-  employeeid: string
+  employeeId?: string
+  employeeid?: string // fallback for different casing
   team: string
   role: string
   letter?: string
@@ -118,7 +119,7 @@ export default function ShiftDetailsModal({
                     {shift.operator?.name || 'Unknown'}
                   </div>
                   <div className="text-sm text-gray-600">
-                    ID: {shift.operator?.employeeid || 'N/A'} • Team {shift.operator?.team || 'N/A'}
+                    ID: {shift.operator?.employeeId || shift.operator?.employeeid || 'N/A'} • Team {shift.operator?.team || 'N/A'}
                     {shift.operator?.role === 'APS' && ' • APS'}
                     {shift.operator?.letter && ` • ${shift.operator.letter}`}
                   </div>

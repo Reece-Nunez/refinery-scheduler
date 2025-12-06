@@ -16,7 +16,6 @@ const navItems = {
     OPER: [
         { name: 'Dashboard', href: '/dashboard' },
         { name: 'Operators', href: '/operators' },
-        { name: 'My Info', href: '/operators/me' },
         { name: 'My Calendar', href: '/calendar' },
     ],
 }
@@ -24,6 +23,7 @@ const navItems = {
 export default function SidebarNav() {
     const [role, setRole] = useState<string | null>(null)
     const [userEmail, setUserEmail] = useState<string | null>(null)
+    const [displayName, setDisplayName] = useState<string | null>(null)
     const router = useRouter()
     const pathname = usePathname()
 
@@ -43,14 +43,15 @@ export default function SidebarNav() {
 
             setUserEmail(session.user.email || null)
 
-            // Expect a profile row with role for the auth user, else default OPER
+            // Expect a profile row with role and display_name for the auth user
             const { data: profile } = await supabase
                 .from('users')
-                .select('role')
+                .select('role, display_name')
                 .eq('id', session.user.id)
                 .single()
 
             setRole((profile as any)?.role || 'OPER')
+            setDisplayName((profile as any)?.display_name || null)
         }
 
         fetchRoleFromDB()
@@ -73,14 +74,14 @@ export default function SidebarNav() {
 
     if (!role) {
         return (
-            <aside className="w-64 bg-black text-white p-4 min-h-screen">
+            <aside className="w-64 bg-black text-white p-4 h-screen sticky top-0">
                 <p className="text-gray-400">Loading...</p>
             </aside>
         )
     }
 
     return (
-        <aside className="w-64 bg-black text-white p-4 min-h-screen flex flex-col">
+        <aside className="w-64 bg-black text-white p-4 h-screen sticky top-0 flex flex-col overflow-y-auto">
             <div className="flex items-center gap-3 mb-6">
                 <Image src="/p66-logo.svg" alt="Phillips 66" width={36} height={36} className="w-9 h-9" />
                 <h2 className="text-lg font-semibold">Refinery Scheduler</h2>
@@ -102,10 +103,20 @@ export default function SidebarNav() {
                 {userEmail && (
                     <div className="mb-3 px-3 py-2">
                         <p className="text-xs text-gray-400">Signed in as</p>
-                        <p className="text-sm font-medium truncate">{userEmail}</p>
+                        <p className="text-sm font-medium truncate">{displayName || userEmail}</p>
+                        {displayName && <p className="text-xs text-gray-400 truncate">{userEmail}</p>}
                         <p className="text-xs text-gray-400 mt-1">Role: {role}</p>
                     </div>
                 )}
+                <Link
+                    href="/profile"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 bg-gray-800 hover:bg-gray-700 rounded transition"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    My Profile
+                </Link>
                 <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 rounded transition"

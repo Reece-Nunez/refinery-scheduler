@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { useToast } from '@/contexts/ToastContext'
 import { RP755FatiguePolicy, type Shift as FatigueShift } from '@/lib/rp755FatiguePolicy'
@@ -89,6 +89,19 @@ export default function AdvancedShiftScheduler({ operators, onShiftsScheduled, d
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [filterByJob, setFilterByJob] = useState<string | null>(defaultJobId || null)
+  const [operatorDropdownOpen, setOperatorDropdownOpen] = useState(false)
+  const operatorDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (operatorDropdownRef.current && !operatorDropdownRef.current.contains(event.target as Node)) {
+        setOperatorDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const getTeamsWorking = (date: string, shiftType: 'day' | 'night'): string[] => {
     // Define start dates for each team's 28-day cycle
@@ -311,7 +324,8 @@ export default function AdvancedShiftScheduler({ operators, onShiftsScheduled, d
       const isGreenHatOrReplacement = op.role === 'Green Hat' || op.role === 'Replacement'
 
       // For overtime shifts, allow all operators regardless of team schedule
-      if (!isOvertime && !isOnWorkingTeam && !isGreenHatOrReplacement) return false
+      // Only apply team filter if a date is selected (otherwise show all operators)
+      if (!isOvertime && startDate && !isOnWorkingTeam && !isGreenHatOrReplacement) return false
 
       // Filter by job training if a job is selected
       if (filterByJob) {
@@ -652,19 +666,47 @@ export default function AdvancedShiftScheduler({ operators, onShiftsScheduled, d
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Select Operator * {filterByJob && <span className="text-xs text-blue-600">(Filtered by job)</span>}
           </label>
-          <select
-            value={selectedOperator?.id || ''}
-            onChange={(e) => handleOperatorChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900"
-            required
-          >
-            <option value="">Choose an operator...</option>
-            {filteredOperators.map(op => (
-              <option key={op.id} value={op.id}>
-                {op.name} ({op.employeeId}) - Team {op.team} {op.role === 'APS' ? '(Green Hat)' : op.letter ? `(${op.letter})` : ''}
-              </option>
-            ))}
-          </select>
+          <div className="relative" ref={operatorDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setOperatorDropdownOpen(!operatorDropdownOpen)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white text-left flex items-center justify-between"
+            >
+              <span className={selectedOperator ? 'text-gray-900' : 'text-gray-500'}>
+                {selectedOperator
+                  ? `${selectedOperator.name} (${selectedOperator.employeeId}) - Team ${selectedOperator.team} ${selectedOperator.role === 'APS' ? '(Green Hat)' : selectedOperator.letter ? `(${selectedOperator.letter})` : ''}`
+                  : 'Choose an operator...'}
+              </span>
+              <svg className={`w-5 h-5 text-gray-400 transition-transform ${operatorDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {operatorDropdownOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-gray-500"
+                  onClick={() => {
+                    handleOperatorChange('')
+                    setOperatorDropdownOpen(false)
+                  }}
+                >
+                  Choose an operator...
+                </div>
+                {filteredOperators.map(op => (
+                  <div
+                    key={op.id}
+                    className={`px-3 py-2 hover:bg-gray-100 cursor-pointer text-gray-900 ${selectedOperator?.id === op.id ? 'bg-red-50' : ''}`}
+                    onClick={() => {
+                      handleOperatorChange(op.id)
+                      setOperatorDropdownOpen(false)
+                    }}
+                  >
+                    {op.name} ({op.employeeId}) - Team {op.team} {op.role === 'APS' ? '(Green Hat)' : op.letter ? `(${op.letter})` : ''}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           {filterByJob && (
             <p className="mt-1 text-xs text-blue-600">
               Showing only operators trained for this job ({filteredOperators.length} available)
@@ -792,7 +834,8 @@ export default function AdvancedShiftScheduler({ operators, onShiftsScheduled, d
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900"
+                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 cursor-pointer"
                 required
               />
             </div>

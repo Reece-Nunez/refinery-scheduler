@@ -56,13 +56,55 @@ interface JobCoverageScheduleProps {
   onVacationClick?: (vacation: Vacation) => void
   onMandateClick?: (date: string, shiftType: 'day' | 'night') => void
   onShiftDetails?: (shift: Shift) => void
+  onDeleteShifts?: (shiftIds: string[]) => Promise<void>
 }
 
-export default function JobCoverageSchedule({ jobs, shifts, vacations, mandates, onShiftClick, onVacationClick, onMandateClick, onShiftDetails }: JobCoverageScheduleProps) {
+export default function JobCoverageSchedule({ jobs, shifts, vacations, mandates, onShiftClick, onVacationClick, onMandateClick, onShiftDetails, onDeleteShifts }: JobCoverageScheduleProps) {
   const { showToast } = useToast()
   const [viewDays, setViewDays] = useState<7 | 14>(7)
   const [startDate, setStartDate] = useState<Date>(new Date())
   const [dateRange, setDateRange] = useState<Date[]>([])
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedShiftIds, setSelectedShiftIds] = useState<Set<string>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Exit select mode and clear selections
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedShiftIds(new Set())
+  }
+
+  // Toggle shift selection
+  const toggleShiftSelection = (shiftId: string) => {
+    setSelectedShiftIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(shiftId)) {
+        newSet.delete(shiftId)
+      } else {
+        newSet.add(shiftId)
+      }
+      return newSet
+    })
+  }
+
+  // Handle bulk delete
+  const handleDeleteSelected = async () => {
+    if (selectedShiftIds.size === 0 || !onDeleteShifts) return
+
+    const confirmed = window.confirm(`Are you sure you want to delete ${selectedShiftIds.size} shift(s)?`)
+    if (!confirmed) return
+
+    setIsDeleting(true)
+    try {
+      await onDeleteShifts(Array.from(selectedShiftIds))
+      showToast(`Successfully deleted ${selectedShiftIds.size} shift(s)`, 'success')
+      exitSelectMode()
+    } catch (error) {
+      showToast('Failed to delete shifts', 'error')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   // Custom job order
   const jobOrder = ['FCC Console', 'VRU Console', 'Butamer', 'FCC Out', 'VRU Out', 'Pumper']
@@ -221,6 +263,13 @@ export default function JobCoverageSchedule({ jobs, shifts, vacations, mandates,
   }
 
   const handleCellClick = (date: Date, jobId: string, shiftType: 'day' | 'night', existingShift: Shift | null) => {
+    // In select mode, toggle selection for existing shifts
+    if (selectMode && existingShift) {
+      toggleShiftSelection(existingShift.id)
+      return
+    }
+
+    // Normal mode behavior
     if (existingShift && onShiftDetails) {
       onShiftDetails(existingShift)
     } else if (onShiftClick) {
@@ -259,6 +308,20 @@ export default function JobCoverageSchedule({ jobs, shifts, vacations, mandates,
 
           {/* Navigation */}
           <div className="flex items-center gap-2">
+            {/* Select Mode Toggle */}
+            {onDeleteShifts && (
+              <button
+                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+                className={`px-3 py-1 text-sm rounded transition duration-200 ${
+                  selectMode
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                {selectMode ? 'Cancel Select' : 'Select Shifts'}
+              </button>
+            )}
+            <span className="mx-1 text-gray-300">|</span>
             <button
               onClick={goToPreviousWeek}
               className="p-2 hover:bg-gray-100 rounded transition duration-200"
@@ -381,12 +444,25 @@ export default function JobCoverageSchedule({ jobs, shifts, vacations, mandates,
                         {/* Day Shift */}
                         <div
                           onClick={() => handleCellClick(date, job.id, 'day', dayShift)}
-                          className={`text-xs p-2 rounded border-2 cursor-pointer transition hover:shadow-md ${
+                          className={`text-xs p-2 rounded border-2 cursor-pointer transition hover:shadow-md relative ${
+                            dayShift && selectedShiftIds.has(dayShift.id)
+                              ? 'ring-2 ring-red-500 ring-offset-1'
+                              : ''
+                          } ${
                             dayShift && dayShift.operator
                               ? `${teamColors[dayShift.operator.team] || 'bg-gray-100 text-gray-800 border-gray-300'} border-l-4 border-l-yellow-400`
                               : 'bg-white border-dashed border-gray-300 text-gray-400 hover:border-gray-400'
                           }`}
                         >
+                          {selectMode && dayShift && (
+                            <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                              selectedShiftIds.has(dayShift.id)
+                                ? 'bg-red-500 text-white'
+                                : 'bg-gray-300 text-gray-600'
+                            }`}>
+                              {selectedShiftIds.has(dayShift.id) ? '✓' : ''}
+                            </div>
+                          )}
                           {dayShift && dayShift.operator ? (
                             <div className="flex items-center justify-between">
                               <span className="font-medium truncate">
@@ -456,12 +532,25 @@ export default function JobCoverageSchedule({ jobs, shifts, vacations, mandates,
                         {/* Night Shift */}
                         <div
                           onClick={() => handleCellClick(date, job.id, 'night', nightShift)}
-                          className={`text-xs p-2 rounded border-2 cursor-pointer transition hover:shadow-md ${
+                          className={`text-xs p-2 rounded border-2 cursor-pointer transition hover:shadow-md relative ${
+                            nightShift && selectedShiftIds.has(nightShift.id)
+                              ? 'ring-2 ring-red-500 ring-offset-1'
+                              : ''
+                          } ${
                             nightShift && nightShift.operator
                               ? `${teamColors[nightShift.operator.team] || 'bg-gray-100 text-gray-800 border-gray-300'} border-l-4 border-l-gray-700`
                               : 'bg-white border-dashed border-gray-300 text-gray-400 hover:border-gray-400'
                           }`}
                         >
+                          {selectMode && nightShift && (
+                            <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                              selectedShiftIds.has(nightShift.id)
+                                ? 'bg-red-500 text-white'
+                                : 'bg-gray-300 text-gray-600'
+                            }`}>
+                              {selectedShiftIds.has(nightShift.id) ? '✓' : ''}
+                            </div>
+                          )}
                           {nightShift && nightShift.operator ? (
                             <div className="flex items-center justify-between">
                               <span className="font-medium truncate">
@@ -548,6 +637,36 @@ export default function JobCoverageSchedule({ jobs, shifts, vacations, mandates,
           </div>
         </div>
       </div>
+
+      {/* Floating Action Bar for Selected Shifts */}
+      {selectMode && selectedShiftIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-4 z-50">
+          <span className="font-medium">{selectedShiftIds.size} shift{selectedShiftIds.size > 1 ? 's' : ''} selected</span>
+          <button
+            onClick={() => setSelectedShiftIds(new Set())}
+            className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded transition"
+          >
+            Clear
+          </button>
+          <button
+            onClick={handleDeleteSelected}
+            disabled={isDeleting}
+            className="px-4 py-1 text-sm bg-red-600 hover:bg-red-700 rounded transition flex items-center gap-2 disabled:opacity-50"
+          >
+            {isDeleting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Deleting...
+              </>
+            ) : (
+              <>Delete Selected</>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
