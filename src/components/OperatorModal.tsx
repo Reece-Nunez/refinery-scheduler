@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/contexts/ToastContext'
+import { calculateVacationHours, getYearsOfService } from '@/lib/vacationUtils'
 
 interface Job {
   id: string
@@ -22,6 +23,8 @@ interface Operator {
   email?: string
   status?: string
   consoles?: string[]
+  vacationHours?: number
+  hireDate?: string | null
 }
 
 interface OperatorModalProps {
@@ -47,6 +50,8 @@ export default function OperatorModal({ isOpen, onClose, onSave, operator }: Ope
     letter: '',
     isReplacement: false,
     trainedJobIds: [] as string[],
+    vacationHours: 80, // Default 2 weeks * 40 hours
+    hireDate: '',
   })
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(false)
@@ -72,6 +77,8 @@ export default function OperatorModal({ isOpen, onClose, onSave, operator }: Ope
           letter: isReplacement ? letter.toUpperCase() : letter,
           isReplacement,
           trainedJobIds: operator.trainedJobs.map(j => j.id),
+          vacationHours: operator.vacationHours ?? 80,
+          hireDate: operator.hireDate || '',
         })
       } else {
         resetForm()
@@ -102,6 +109,8 @@ export default function OperatorModal({ isOpen, onClose, onSave, operator }: Ope
       letter: '',
       isReplacement: false,
       trainedJobIds: [],
+      vacationHours: 80,
+      hireDate: '',
     })
   }
 
@@ -306,6 +315,83 @@ export default function OperatorModal({ isOpen, onClose, onSave, operator }: Ope
                   placeholder="123-123-1234"
                   disabled={loading}
                 />
+              </div>
+            </div>
+
+            {/* Hire Date and Vacation Hours */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hire Date
+                </label>
+                <input
+                  type="date"
+                  name="hireDate"
+                  value={form.hireDate}
+                  onChange={handleChange}
+                  className="w-48 px-3 py-2 border border-gray-300 text-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  disabled={loading}
+                />
+                {form.hireDate && (
+                  <p className="mt-1 text-sm text-gray-600">
+                    {getYearsOfService(form.hireDate)} years of service
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Annual Vacation Hours
+                </label>
+                {form.hireDate ? (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-semibold text-green-800">
+                        {calculateVacationHours(form.hireDate)} hours
+                      </span>
+                      <span className="text-sm text-green-600">
+                        ({(calculateVacationHours(form.hireDate) || 0) / 40} weeks)
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-green-700">
+                      Auto-calculated from hire date based on years of service
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        name="vacationHours"
+                        value={form.vacationHours}
+                        onChange={handleChange}
+                        min={0}
+                        max={300}
+                        step={40}
+                        className="w-32 px-3 py-2 border border-gray-300 text-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        disabled={loading}
+                      />
+                      <span className="text-sm text-gray-500">
+                        ({form.vacationHours / 40} weeks)
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Set hire date for auto-calculation, or manually set hours (40h = 1 week)
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* Vacation tier reference */}
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-xs text-gray-600">
+                <p className="font-medium mb-1">Vacation Tiers:</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                  <span>0-3 years: 2 weeks (80h)</span>
+                  <span>4-8 years: 3 weeks (120h)</span>
+                  <span>9-19 years: 4 weeks (160h)</span>
+                  <span>20-24 years: 5 weeks (200h)</span>
+                  <span>25+ years: 6 weeks (240h)</span>
+                </div>
               </div>
             </div>
 

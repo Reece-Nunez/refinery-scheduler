@@ -1,8 +1,9 @@
 /* styles/calendar.css */
 .rbc-calendar {
-  color: white;
+  color: #374151;
   border-radius: 8px;
   padding: 8px;
+  background-color: white;
 }
 
 .rbc-toolbar {
@@ -127,4 +128,178 @@
 
 .rbc-label {
   color: #374151 !important; /* gray-700 */
+}
+
+/* Day and Week view improvements */
+.rbc-time-view {
+  border: 1px solid #e5e7eb;
+}
+
+.rbc-time-header {
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.rbc-time-content {
+  border-top: none;
+}
+
+/* Make events in day/week view more readable */
+.rbc-day-slot .rbc-event {
+  border: none !important;
+  min-height: 24px;
+  margin: 1px 2px;
+}
+
+.rbc-day-slot .rbc-event-content {
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+/* Increase row height in day view for better readability */
+.rbc-time-slot {
+  min-height: 30px;
+}
+
+.rbc-timeslot-group {
+  min-height: 60px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* Time gutter styling */
+.rbc-time-gutter {
+  background-color: #f9fafb;
+}
+
+.rbc-time-gutter .rbc-timeslot-group {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Current time indicator */
+.rbc-current-time-indicator {
+  background-color: #ef4444;
+  height: 2px;
+}
+
+/* Month view - show more events before "+more" */
+.rbc-month-row {
+  min-height: 100px;
+}
+
+.rbc-row-segment {
+  padding: 1px 2px;
+}
+
+/* Agenda view improvements */
+.rbc-agenda-view {
+  background-color: white;
+}
+
+.rbc-agenda-table {
+  border: 1px solid #e5e7eb;
+}
+
+.rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+  background-color: #f9fafb;
+  color: #374151;
+  font-weight: 600;
+  padding: 12px 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+}
+
+.rbc-agenda-view table.rbc-agenda-table tbody > tr:hover > td {
+  background-color: #f9fafb;
+}
+
+/* Fix overlapping events in day/week view */
+.rbc-day-slot .rbc-events-container {
+  margin-right: 0;
+}
+
+/* Make "show more" link more visible */
+.rbc-show-more {
+  color: #3b82f6;
+  font-weight: 500;
+  background-color: transparent;
+  padding: 2px 4px;
+}
+
+.rbc-show-more:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+/* Style the all-day/events section in day/week view as a proper list */
+.rbc-time-view .rbc-time-header {
+  flex: 1;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.rbc-time-view .rbc-time-header-content {
+  flex: 1;
+  min-height: 400px;
+}
+
+.rbc-allday-cell {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #ffffff;
+  padding: 8px;
+}
+
+.rbc-row-content {
+  z-index: 4;
+}
+
+/* Style events as cards in day view */
+.rbc-time-view .rbc-allday-cell .rbc-event,
+.rbc-time-view .rbc-row-segment .rbc-event {
+  margin: 4px 8px !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  position: relative !important;
+  left: 0 !important;
+  width: calc(100% - 16px) !important;
+  display: block !important;
+}
+
+.rbc-row-bg {
+  display: none;
+}
+
+/* Hide the empty time grid in day view since we're using the header */
+.rbc-time-view .rbc-time-content {
+  display: none;
+}
+
+/* Make header take full space */
+.rbc-time-view .rbc-time-header {
+  border-bottom: none;
+}
+
+/* Better event layout in day view */
+.rbc-day-slot .rbc-event {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.rbc-day-slot .rbc-event-label {
+  display: none;
+}
+
+/* Make events side by side when overlapping */
+.rbc-day-slot .rbc-events-container {
+  margin-right: 10px;
+}
+
+/* Event minimum width in day view */
+.rbc-event {
+  min-width: 80px;
 }

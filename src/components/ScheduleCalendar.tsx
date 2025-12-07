@@ -16,6 +16,9 @@ type ShiftEvent = {
   start: Date
   end: Date
   team?: string
+  shiftType?: 'day' | 'night'
+  operatorName?: string
+  employeeId?: string
   isOverridden: boolean
 }
 
@@ -28,7 +31,6 @@ const localizer = momentLocalizer(moment)
 
 export default function ScheduleCalendar({ fetchShifts, canManage = true }: Props) {
   const [events, setEvents] = useState<ShiftEvent[]>([])
-  const [defaultDate, setDefaultDate] = useState<Date>(new Date())
   const [view, setView] = useState<View>(Views.MONTH)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
   const [selectedEvent, setSelectedEvent] = useState<ShiftEvent | null>(null)
@@ -38,17 +40,23 @@ export default function ScheduleCalendar({ fetchShifts, canManage = true }: Prop
     const res = await fetch('/api/shifts')
     const data = await res.json()
 
-    const mapped: ShiftEvent[] = data.map((shift: any) => ({
-      id: shift.id,
-      title: `${shift.operator.name} (${shift.operator.employeeId})`,
-      start: parseISO(shift.startTime),
-      end: parseISO(shift.endTime),
-      team: shift.operator.team,
-      isOverridden: shift.isOverridden ?? false,
-    }))
+    const mapped: ShiftEvent[] = data.map((shift: any) => {
+      const shiftType = shift.shiftType || 'day'
+      const icon = shiftType === 'night' ? '🌙' : '☀️'
+      return {
+        id: shift.id,
+        title: `${icon} ${shift.operator.name}`,
+        start: parseISO(shift.startTime),
+        end: parseISO(shift.endTime),
+        team: shift.operator.team,
+        shiftType: shiftType,
+        operatorName: shift.operator.name,
+        employeeId: shift.operator.employeeId,
+        isOverridden: shift.isOverridden ?? false,
+      }
+    })
 
     setEvents(mapped)
-    if (mapped.length > 0) setDefaultDate(mapped[0].start)
   }
 
   useEffect(() => {
@@ -102,47 +110,112 @@ export default function ScheduleCalendar({ fetchShifts, canManage = true }: Prop
     fetchEvents()
   }
 
+  // Team colors with names for legend
+  const teamColors: Record<string, { bg: string; name: string }> = {
+    A: { bg: '#3b82f6', name: 'Team A' },  // blue-500
+    B: { bg: '#22c55e', name: 'Team B' },  // green-500
+    C: { bg: '#a855f7', name: 'Team C' },  // purple-500
+    D: { bg: '#f97316', name: 'Team D' },  // orange-500
+  }
+
   const eventStyleGetter = (event: ShiftEvent) => {
-    const teamColors: Record<string, string> = {
-      A: '#60a5fa',
-      B: '#34d399',
-      C: '#fbbf24',
-      D: '#f87171',
-    }
-    const backgroundColor = teamColors[event.team as string] || '#9ca3af'
+    const teamColor = teamColors[event.team as string]
+    const backgroundColor = teamColor?.bg || '#9ca3af'
     return {
       style: {
         backgroundColor,
-        color: 'black',
+        color: 'white',
         borderRadius: '6px',
-        padding: '2px 4px',
-        fontWeight: 600,
+        padding: '2px 6px',
+        fontWeight: 500,
         border: 'none',
+        fontSize: '0.85rem',
       },
     }
   }
 
+  // Custom event component with tooltip
+  const EventComponent = ({ event }: { event: ShiftEvent }) => {
+    const [showTooltip, setShowTooltip] = useState(false)
+    const shiftTypeLabel = event.shiftType === 'night' ? 'Night Shift' : 'Day Shift'
+    const timeStr = `${format(event.start, 'h:mm a')} - ${format(event.end, 'h:mm a')}`
+
+    return (
+      <div
+        className="relative h-full"
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        <span className="truncate block">{event.title}</span>
+        {showTooltip && (
+          <div className="absolute z-50 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-nowrap left-0 top-full mt-1 pointer-events-none">
+            <div className="font-semibold text-sm mb-1">{event.operatorName}</div>
+            <div className="text-gray-300">ID: {event.employeeId}</div>
+            <div className="text-gray-300">Team {event.team}</div>
+            <div className="text-gray-300">{shiftTypeLabel}</div>
+            <div className="text-gray-300">{timeStr}</div>
+            {event.isOverridden && (
+              <div className="text-red-400 mt-1">⚠️ RP-755 Override</div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div className="mt-16 w-full">
+    <div className="w-full">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="h-[700px] border border-white rounded-lg overflow-hidden shadow-lg">
+        {/* Legend */}
+        <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="text-sm font-medium text-gray-700">Team Colors:</div>
+            {Object.entries(teamColors).map(([team, { bg, name }]) => (
+              <div key={team} className="flex items-center gap-2">
+                <div
+                  className="w-4 h-4 rounded"
+                  style={{ backgroundColor: bg }}
+                ></div>
+                <span className="text-sm text-gray-600">{name}</span>
+              </div>
+            ))}
+            <div className="border-l border-gray-300 pl-6 flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span>☀️</span>
+                <span className="text-sm text-gray-600">Day Shift</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>🌙</span>
+                <span className="text-sm text-gray-600">Night Shift</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-[700px] border border-gray-200 rounded-lg overflow-hidden shadow-lg bg-white">
           <Calendar
             localizer={localizer}
             events={events}
             view={view}
             onView={setView}
+            date={currentDate}
             onNavigate={setCurrentDate}
-            defaultDate={defaultDate}
             startAccessor="start"
             endAccessor="end"
             eventPropGetter={eventStyleGetter}
-            style={{ height: '100%', color: 'white' }}
+            style={{ height: '100%' }}
             views={{ month: true, week: true, day: true, agenda: true }}
+            components={{
+              event: EventComponent,
+            }}
             onSelectEvent={(event: ShiftEvent) => {
               if (!canManage) return
               setSelectedEvent(event)
               setIsModalOpen(true)
             }}
+            step={30}
+            timeslots={2}
+            dayLayoutAlgorithm="no-overlap"
           />
         </div>
       </div>

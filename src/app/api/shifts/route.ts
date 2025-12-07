@@ -23,6 +23,7 @@ export async function GET() {
     const { data: shifts, error } = await supabase
       .from('shifts')
       .select('*')
+      .order('startTime', { ascending: false })
     if (error) throw error
 
     // Enrich with operator if available
@@ -33,22 +34,72 @@ export async function GET() {
       operatorsById = new Map((ops || []).map((o: any) => [o.id, o]))
     }
 
-    const result = (shifts || []).map((s: any) => ({
-      id: s.id,
-      operatorId: s.operatorId,
-      jobId: s.jobId,
-      startTime: s.startTime,
-      endTime: s.endTime,
-      isOverridden: s.isOverridden,
-      isOvertime: s.isOvertime || s.isCallOut,
-      isOutage: s.isOutage,
-      shiftType: s.shiftType,
-      createdAt: s.createdAt,
-      operator: (() => {
-        const o: any = operatorsById.get(s.operatorId)
-        return o ? { id: o.id, name: o.name, employeeId: o.employeeid ?? o.employee_id ?? o.employeeId, team: o.team, role: o.role, letter: o.letter } : null
-      })()
-    }))
+    // Group shifts by operator for violation calculation
+    const shiftsByOperator = new Map<string, any[]>()
+    for (const s of (shifts || [])) {
+      if (!shiftsByOperator.has(s.operatorId)) {
+        shiftsByOperator.set(s.operatorId, [])
+      }
+      shiftsByOperator.get(s.operatorId)!.push(s)
+    }
+
+    // Calculate violations for each shift
+    const result = (shifts || []).map((s: any) => {
+      const operatorShifts = shiftsByOperator.get(s.operatorId) || []
+
+      // Convert current shift to the format expected by RP755FatiguePolicy
+      const currentShift: Shift = {
+        operatorId: s.operatorId,
+        startTime: new Date(s.startTime),
+        endTime: new Date(s.endTime),
+        isOverridden: Boolean(s.isOverridden),
+        isOvertime: Boolean(s.isOvertime || s.isCallOut),
+        isOutage: Boolean(s.isOutage),
+        shiftType: s.shiftType
+      }
+
+      // Get other shifts for this operator (excluding current shift)
+      const otherShifts: Shift[] = operatorShifts
+        .filter((os: any) => os.id !== s.id)
+        .map((os: any) => ({
+          operatorId: os.operatorId,
+          startTime: new Date(os.startTime),
+          endTime: new Date(os.endTime),
+          isOverridden: Boolean(os.isOverridden),
+          isOvertime: Boolean(os.isOvertime || os.isCallOut),
+          isOutage: Boolean(os.isOutage),
+          shiftType: os.shiftType
+        }))
+
+      // Calculate violations for this shift
+      const violations = RP755FatiguePolicy.validateShift(currentShift, otherShifts, Boolean(s.isOutage))
+
+      return {
+        id: s.id,
+        operatorId: s.operatorId,
+        jobId: s.jobId,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        isOverridden: s.isOverridden,
+        isOvertime: s.isOvertime || s.isCallOut,
+        isCallOut: s.isCallOut,
+        isOutage: s.isOutage,
+        shiftType: s.shiftType,
+        createdAt: s.createdAt,
+        violations: violations.length > 0 ? violations.map(v => ({
+          rule: v.rule,
+          severity: v.severity,
+          message: v.message,
+          currentValue: v.currentValue,
+          limit: v.limit,
+          requiresException: v.requiresException
+        })) : [],
+        operator: (() => {
+          const o: any = operatorsById.get(s.operatorId)
+          return o ? { id: o.id, name: o.name, employeeId: o.employeeid ?? o.employee_id ?? o.employeeId, team: o.team, role: o.role, letter: o.letter } : null
+        })()
+      }
+    })
     return NextResponse.json(result)
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to fetch shifts' }, { status: 500 })

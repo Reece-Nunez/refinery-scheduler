@@ -10,6 +10,7 @@ import MandateModal from '@/components/MandateModal'
 import OutOfScheduleView from '@/components/OutOfScheduleView'
 import ShiftDetailsModal from '@/components/ShiftDetailsModal'
 import { createBrowserClient } from '@supabase/ssr'
+import { FatigueViolation, ExceptionRequest } from '@/lib/rp755FatiguePolicy'
 
 type Job = {
   id: string
@@ -233,53 +234,54 @@ export default function ShiftsPage() {
     setViolations([])
     setError('')
 
+    const { operatorId, shiftDate, shiftType, isOverridden, isCallOut, isOutage } = form
+
+    if (!operatorId || !shiftDate) {
+      setError('Operator and shift date are required.')
+      return
+    }
+
+    // Calculate shift times based on shift type
+    const start = new Date(shiftDate)
+    const startTime = new Date(start)
+    const endTime = new Date(start)
+
+    if (shiftType === 'day') {
+      startTime.setHours(4, 45)
+      endTime.setHours(16, 45)
+    } else {
+      startTime.setHours(16, 45)
+      endTime.setDate(endTime.getDate() + 1)
+      endTime.setHours(4, 45)
+    }
+
+    const payload = {
+      operatorId,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      isOverridden,
+      isCallOut,
+      isOutage,
+      shiftType
+    }
+
     try {
-      const { operatorId, shiftDate, shiftType, isOverridden, isCallOut, isOutage } = form
-
-      if (!operatorId || !shiftDate) {
-        setError('Operator and shift date are required.')
-        return
-      }
-
-      const start = new Date(shiftDate)
-      const startTime = new Date(start)
-      const endTime = new Date(start)
-
-      if (shiftType === 'day') {
-        startTime.setHours(4, 45)
-        endTime.setHours(16, 45)
-      } else {
-        startTime.setHours(16, 45)
-        endTime.setDate(endTime.getDate() + 1)
-        endTime.setHours(4, 45)
-      }
-
-      const payload = {
-        operatorId,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        isOverridden,
-        isCallOut,
-        isOutage,
-        shiftType
-      }
-
       const res = await axios.post('/api/shifts', payload)
 
       // ✅ only clear if successful
       setForm({ operatorId: '', shiftDate: '', shiftType: 'day', isOverridden: false, isCallOut: false, isOutage: false })
       fetchShifts()
-      
+
       // Show success message if violations were overridden
       if (res.data.violations && res.data.violations.length > 0) {
         alert(`Shift scheduled with ${res.data.violations.length} RP-755 violation(s) overridden.`)
       }
-      
+
     } catch (err: any) {
       if (err.response?.data?.violations?.length > 0) {
         const rp755Violations = err.response.data.violations
         setViolations(rp755Violations)
-        
+
         // Store the shift data for exception processing
         setPendingShift({
           operatorId,
@@ -289,7 +291,7 @@ export default function ShiftsPage() {
           isOutage,
           shiftType
         })
-        
+
         // Show exception modal for RP-755 violations
         setShowExceptionModal(true)
         return // ⛔ do NOT continue or clear form

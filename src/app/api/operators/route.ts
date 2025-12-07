@@ -49,6 +49,8 @@ export async function GET() {
       letter: op.letter ?? null,
       status: op.status ?? 'active',
       consoles: op.consoles ?? null,
+      vacationHours: op.vacation_hours ?? 168,
+      hireDate: op.hire_date ?? null,
       createdAt: op.created_at ?? op.createdAt ?? op.createdat,
       trainedJobs: trainedByOp.get(op.id) || []
     }))
@@ -64,13 +66,13 @@ export async function POST(req: Request) {
     const isAdmin = await requireAdmin(req)
     if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const body = await req.json()
-    const { employeeId, name, role, team, email, phone, letter, status, consoles, trainedJobIds } = body
+    const { employeeId, name, role, team, email, phone, letter, status, consoles, trainedJobIds, vacationHours, hireDate } = body
 
     if (!employeeId || !name || !role || !team || !email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const insertPayload: any = { 
+    const insertPayload: any = {
       employeeid: employeeId,
       name,
       role,
@@ -81,6 +83,8 @@ export async function POST(req: Request) {
     if (role !== 'APS' && letter) insertPayload.letter = letter
     if (status) insertPayload.status = status
     if (consoles) insertPayload.consoles = consoles
+    if (vacationHours !== undefined) insertPayload.vacation_hours = vacationHours
+    if (hireDate) insertPayload.hire_date = hireDate
 
     const { data, error } = await supabase
       .from('operators')
@@ -107,6 +111,8 @@ export async function POST(req: Request) {
       letter: data.letter ?? null,
       status: data.status ?? 'active',
       consoles: data.consoles ?? null,
+      vacationHours: data.vacation_hours ?? 168,
+      hireDate: data.hire_date ?? null,
       createdAt: data.created_at ?? data.createdAt ?? data.createdat,
       trainedJobs: []
     } })
@@ -120,12 +126,14 @@ export async function PUT(req: Request) {
     const isAdmin = await requireAdmin(req)
     if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const body = await req.json()
-    const { id, name, employeeId, role, team, letter, phone, trainedJobIds } = body
+    const { id, name, employeeId, role, team, letter, phone, trainedJobIds, vacationHours, hireDate } = body
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
     const update: any = { name, role, team }
     if (employeeId) update.employeeid = employeeId
     if (phone !== undefined) update.phone = phone
+    if (vacationHours !== undefined) update.vacation_hours = vacationHours
+    if (hireDate !== undefined) update.hire_date = hireDate || null
     update.letter = role === 'APS' ? null : (letter || null)
 
     const { data, error } = await supabase

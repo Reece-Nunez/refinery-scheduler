@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface ShiftData {
   date: string
@@ -68,6 +68,54 @@ export default function ShiftAnalyticsChart({ shifts }: ShiftAnalyticsProps) {
   const maxShifts = Math.max(...chartData.map(d => d.totalShifts), 1)
   const maxViolations = Math.max(...chartData.map(d => d.violations), 1)
 
+  // Calculate which labels to show based on data density (industry standard: ~7 labels max)
+  const getLabelInterval = () => {
+    const len = chartData.length
+    if (len <= 7) return 1 // Show all for 7 days
+    if (len <= 30) return 5 // Every 5th for 30 days (~6 labels)
+    return 15 // Every 15th for 90 days (~6 labels)
+  }
+
+  const shouldShowLabel = (index: number) => {
+    const interval = getLabelInterval()
+    const len = chartData.length
+    // Always show first and last
+    if (index === 0 || index === len - 1) return true
+    // Show at regular intervals
+    return index % interval === 0
+  }
+
+  // Drag to scroll functionality
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeft, setScrollLeft] = useState(0)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return
+    setIsDragging(true)
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft)
+    setScrollLeft(scrollContainerRef.current.scrollLeft)
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return
+    e.preventDefault()
+    const x = e.pageX - scrollContainerRef.current.offsetLeft
+    const walk = (x - startX) * 2
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk
+  }
+
+  // Calculate minimum width for chart based on data points
+  const getChartMinWidth = () => {
+    const barWidth = 40 // minimum pixels per bar group
+    return Math.max(chartData.length * barWidth, 100)
+  }
+
   return (
     <div className="bg-white shadow rounded-lg">
       <div className="px-6 py-4 border-b border-gray-200">
@@ -115,69 +163,106 @@ export default function ShiftAnalyticsChart({ shifts }: ShiftAnalyticsProps) {
             </div>
 
             {/* Simple Bar Chart */}
-            <div className="relative">
-              <div className="flex items-end justify-between space-x-1" style={{ height: '200px' }}>
-                {chartData.map((data, index) => {
-                  const shiftHeight = (data.totalShifts / maxShifts) * 160
-                  const violationHeight = (data.violations / maxViolations) * 160
-                  const complianceOpacity = data.complianceRate / 100
-
-                  return (
-                    <div key={data.date} className="flex flex-col items-center flex-1 group">
-                      <div className="relative w-full flex items-end justify-center space-x-1 mb-2">
-                        {/* Total Shifts Bar */}
-                        <div 
-                          className="bg-gray-800 rounded-t w-1/3 transition-all duration-200 group-hover:bg-gray-900"
-                          style={{ height: `${Math.max(shiftHeight, 2)}px` }}
-                          title={`${data.totalShifts} total shifts`}
-                        ></div>
-                        
-                        {/* Violations Bar */}
-                        <div 
-                          className="bg-red-500 rounded-t w-1/3 transition-all duration-200 group-hover:bg-red-600"
-                          style={{ height: `${Math.max(violationHeight, 2)}px` }}
-                          title={`${data.violations} violations`}
-                        ></div>
-                        
-                        {/* Compliance Indicator */}
-                        <div 
-                          className="bg-green-500 rounded-t w-1/3 transition-all duration-200 group-hover:bg-green-600"
-                          style={{ 
-                            height: '20px',
-                            opacity: complianceOpacity 
-                          }}
-                          title={`${data.complianceRate}% compliance`}
-                        ></div>
-                      </div>
-
-                      {/* Date Label */}
-                      <div className="text-xs text-gray-500 text-center transform -rotate-45 origin-top-left">
-                        {new Date(data.date).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric' 
-                        })}
-                      </div>
-
-                      {/* Tooltip on Hover */}
-                      <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10 transition-opacity">
-                        <div>{data.totalShifts} shifts</div>
-                        <div>{data.violations} violations</div>
-                        <div>{data.complianceRate}% compliant</div>
-                        <div>{data.avgHours}h avg</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
+            <div className="relative pl-8">
               {/* Y-Axis Labels */}
-              <div className="absolute left-0 top-0 h-40 flex flex-col justify-between text-xs text-gray-500 -ml-8">
+              <div className="absolute left-0 top-0 flex flex-col justify-between text-xs text-gray-500 w-8 pr-2 text-right" style={{ height: '160px' }}>
                 <span>{maxShifts}</span>
                 <span>{Math.round(maxShifts * 0.75)}</span>
                 <span>{Math.round(maxShifts * 0.5)}</span>
                 <span>{Math.round(maxShifts * 0.25)}</span>
                 <span>0</span>
               </div>
+
+              {/* Scrollable chart container */}
+              <div
+                ref={scrollContainerRef}
+                className={`overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                style={{ scrollbarWidth: 'thin' }}
+              >
+                <div style={{ minWidth: `${getChartMinWidth()}px` }}>
+                  {/* Bar chart area */}
+                  <div className="flex items-end justify-between gap-1" style={{ height: '160px' }}>
+                    {chartData.map((data, index) => {
+                      const shiftHeight = (data.totalShifts / maxShifts) * 140
+                      const violationHeight = (data.violations / maxViolations) * 140
+                      const complianceOpacity = data.complianceRate / 100
+
+                      return (
+                        <div key={data.date} className="flex flex-col items-center flex-1 h-full group relative" style={{ minWidth: '36px' }}>
+                          <div className="relative w-full flex items-end justify-center gap-0.5 flex-1">
+                            {/* Total Shifts Bar */}
+                            <div
+                              className="bg-gray-800 rounded-t w-1/3 transition-all duration-200 group-hover:bg-gray-900"
+                              style={{ height: `${Math.max(shiftHeight, 2)}px` }}
+                            ></div>
+
+                            {/* Violations Bar */}
+                            <div
+                              className="bg-red-500 rounded-t w-1/3 transition-all duration-200 group-hover:bg-red-600"
+                              style={{ height: `${Math.max(violationHeight, 2)}px` }}
+                            ></div>
+
+                            {/* Compliance Indicator */}
+                            <div
+                              className="bg-green-500 rounded-t w-1/3 transition-all duration-200 group-hover:bg-green-600"
+                              style={{
+                                height: '20px',
+                                opacity: complianceOpacity
+                              }}
+                            ></div>
+                          </div>
+
+                          {/* Tooltip on Hover - positioned at top of bar area */}
+                          <div className="opacity-0 group-hover:opacity-100 absolute top-0 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded py-1.5 px-2.5 whitespace-nowrap z-20 transition-opacity pointer-events-none shadow-lg">
+                            <div className="font-medium border-b border-gray-700 pb-1 mb-1">
+                              {new Date(data.date).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </div>
+                            <div>{data.totalShifts} shifts</div>
+                            <div>{data.violations} violations</div>
+                            <div>{data.complianceRate}% compliant</div>
+                            <div>{data.avgHours}h avg</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Date labels - separate row below the chart */}
+                  <div className="flex justify-between gap-1 mt-2 pt-2 border-t border-gray-100" style={{ height: '24px' }}>
+                    {chartData.map((data, index) => (
+                      <div
+                        key={`label-${data.date}`}
+                        className="flex-1 flex justify-center"
+                        style={{ minWidth: '36px' }}
+                      >
+                        {shouldShowLabel(index) && (
+                          <span className="text-xs text-gray-500 whitespace-nowrap">
+                            {new Date(data.date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Scroll hint for larger datasets */}
+              {chartData.length > 14 && (
+                <div className="text-xs text-gray-400 text-center mt-2 italic">
+                  Drag to scroll or use mouse wheel
+                </div>
+              )}
             </div>
 
             {/* Summary Stats */}
